@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BotStudio | Build Your Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+
+    <div class="flex h-screen">
+        <aside class="w-1/3 bg-white border-r p-8 flex flex-col gap-6 overflow-y-auto">
+            <div>
+                <h1 class="text-2xl font-bold text-indigo-600 mb-1">BotStudio</h1>
+                <p class="text-slate-500 text-sm">Configure your AI agent settings.</p>
+            </div>
+
+            <div class="space-y-4">
+                <section>
+                    <label class="block text-sm font-semibold mb-2">Bot Name</label>
+                    <input id="botName" type="text" placeholder="e.g. East Moon Assistant" 
+                           class="w-full p-3 bg-slate-100 rounded-lg outline-none border border-transparent focus:border-indigo-500 transition-all">
+                </section>
+
+                <section>
+                    <label class="block text-sm font-semibold mb-2">Greeting Message</label>
+                    <input id="botGreet" type="text" placeholder="Hi! How can I help you today?" 
+                           class="w-full p-3 bg-slate-100 rounded-lg outline-none border border-transparent focus:border-indigo-500 transition-all">
+                </section>
+
+                <section>
+                    <label class="block text-sm font-semibold mb-2">Knowledge Base (Context)</label>
+                    <textarea id="botContext" rows="5" placeholder="Tell the bot who it is and what it knows about your business..." 
+                              class="w-full p-3 bg-slate-100 rounded-lg outline-none border border-transparent focus:border-indigo-500 transition-all"></textarea>
+                </section>
+            </div>
+
+            <button onclick="saveBot()" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">
+                Deploy Chatbot
+            </button>
+        </aside>
+
+        <main class="flex-1 flex flex-col items-center justify-center p-12 bg-slate-100">
+            <p class="text-xs uppercase tracking-widest text-slate-400 font-bold mb-6">Live Preview</p>
+            
+            <div class="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 flex flex-col h-[600px]">
+                <div class="bg-indigo-600 p-6 text-white flex items-center gap-4">
+                    <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-bold text-xl" id="previewIcon">E</div>
+                    <div>
+                        <h3 class="font-bold leading-tight" id="previewName">Your Bot</h3>
+                        <p class="text-xs text-indigo-100">Always active</p>
+                    </div>
+                </div>
+
+                <div class="flex-1 p-6 space-y-4 overflow-y-auto" id="chatWindow">
+                    <div class="bg-slate-100 p-4 rounded-2xl rounded-tl-none text-sm max-w-[85%]">
+                        <p id="previewGreet">Hello! Your greeting will appear here.</p>
+                    </div>
+                </div>
+
+                <div class="p-4 border-t flex gap-2">
+                    <input type="text" disabled placeholder="User will type here..." class="flex-1 bg-slate-50 p-2 rounded-lg text-sm outline-none">
+                    <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold opacity-50 cursor-not-allowed">Send</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Dynamic Preview Logic
+        const inputs = ['botName', 'botGreet'];
+        inputs.forEach(id => {
+            document.getElementById(id).addEventListener('input', (e) => {
+                const targetId = id === 'botName' ? 'previewName' : 'previewGreet';
+                document.getElementById(targetId).innerText = e.target.value || "...";
+                if(id === 'botName') document.getElementById('previewIcon').innerText = e.target.value.charAt(0).toUpperCase();
+            });
+        });
+
+        async function saveBot() {
+            const botConfig = {
+                name: document.getElementById('botName').value,
+                greeting: document.getElementById('botGreet').value,
+                context: document.getElementById('botContext').value
+            };
+            
+            console.log("Saving to Supabase:", botConfig);
+            alert("Bot Config Saved! (Connect your server.js to store this permanently)");
+        }
+    </script>
+</body>
+</html>
