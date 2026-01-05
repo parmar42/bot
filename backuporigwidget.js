@@ -4,7 +4,7 @@
     const botId = scriptTag.getAttribute('data-bot-id');
     
     // 🔧 REPLACE THIS WITH YOUR RENDER URL
-    const BASE_URL = 'https://bot-pd1s.onrender.com';
+    const BASE_URL = 'https://bot-8yai.onrender.com';
     // Example: 'https://chatbot-api-abc123.onrender.com'
     
     // 2. INJECT CSS STYLES
@@ -45,9 +45,7 @@
             overflow: hidden; 
             margin-bottom: 10px;
             animation: slideUp 0.3s ease;
-            transition: all 0.3s ease-in-out; 
         }
-
         @keyframes slideUp {
             from { transform: translateY(20px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
@@ -179,28 +177,6 @@
             color: #c33;
             border: 1px solid #fcc;
         }
-
-        @media (max-width: 600px) {
-            #bot-container {
-                bottom: 0 !important;
-                right: 0 !important;
-            }
-            #bot-window.fullscreen-active {
-                display: flex !important;
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100vw;
-                height: 100dvh; /* Dynamic viewport height for mobile keyboards */
-                border-radius: 0;
-                margin-bottom: 0;
-                z-index: 10000;
-            }
-            #bot-bubble.hidden {
-                display: none;
-            }
-        }
-
     `;
     document.head.appendChild(style);
 
@@ -211,7 +187,7 @@
         <div id="bot-window">
             <div id="bot-header">
                 <span id="bot-name">AI Assistant</span>
-                 <span id="close-bot" style="padding: 5px 10px;">Done</span>
+                <span id="close-bot">✕</span>
             </div>
             <div id="bot-messages"></div>
             <div id="bot-input-area">
@@ -270,33 +246,18 @@
     }
 
     // 7. TOGGLE WINDOW
-    // 7. TOGGLE WINDOW (Updated for Fullscreen)
-    const toggleBot = () => {
-        const isMobile = window.innerWidth <= 600;
-        const isOpen = botWindow.style.display === 'flex' || botWindow.classList.contains('fullscreen-active');
-
+    botBubble.onclick = () => {
+        const isOpen = botWindow.style.display === 'flex';
+        botWindow.style.display = isOpen ? 'none' : 'flex';
         if (!isOpen) {
-            // OPENING
-            botWindow.style.display = 'flex';
-            if (isMobile) {
-                botWindow.classList.add('fullscreen-active');
-                botBubble.classList.add('hidden');
-                document.body.style.overflow = 'hidden'; // Stop background scroll
-            }
-            setTimeout(() => botInput.focus(), 100);
-        } else {
-            // CLOSING
-            botWindow.style.display = 'none';
-            botWindow.classList.remove('fullscreen-active');
-            botBubble.classList.remove('hidden');
-            document.body.style.overflow = ''; // Restore scroll
+            botInput.focus();
         }
     };
-
-    botBubble.onclick = toggleBot;
-    document.getElementById('close-bot').onclick = toggleBot;
-
     
+    document.getElementById('close-bot').onclick = () => {
+        botWindow.style.display = 'none';
+    };
+
     // 8. HANDLE SENDING MESSAGE
     async function sendMessage() {
         const message = botInput.value.trim();
