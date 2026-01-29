@@ -112,7 +112,7 @@ app.post('/webhook', async (req, res) => {
                     // Mark as read + show typing indicator
                     await sendReadReceipt(messageId, from, true);
 
-                    // Process message with AI (now passing messageId + phoneNumber)
+                    // Process message with AI (passing messageId + phoneNumber)
                     await handleIntelligentMessage(from, messageBody, customerName, messageId);
                 }
             }
@@ -121,7 +121,6 @@ app.post('/webhook', async (req, res) => {
         console.error('❌ Webhook Error:', error);
     }
 });
-
 
 // ============================================
 // CHATBOT API ROUTES
@@ -472,13 +471,13 @@ app.use((req, res) => {
 // WHATSAPP HELPER FUNCTIONS
 // ============================================
 
-// Send Read Receipt + Typing Indicator (Typing shown after marking as read)
-async function sendReadReceipt(messageId, showTyping = false) {
+// Send Read Receipt + Typing Indicator (requires messageId and phoneNumber)
+async function sendReadReceipt(messageId, phoneNumber, showTyping = false) {
     try {
         const payload = {
             messaging_product: 'whatsapp',
             recipient_type: 'individual',
-            to: phoneNumber,
+            to: phoneNumber,           // ← now correctly passed in
             type: 'status',
             status: 'read',
             message_id: messageId
@@ -507,7 +506,8 @@ async function sendReadReceipt(messageId, showTyping = false) {
         );
 
     } catch (error) {
-        console.error('Read receipt error:', error.response?.data);
+        // Safely log error response data if it exists
+        console.error('Read receipt error:', error.response?.data || error.message || error);
     }
 }
 
@@ -561,7 +561,7 @@ async function handleIntelligentMessage(phoneNumber, message, customerName, mess
     }
 }
 
-// Database: Get or Create Customer
+// Database: Get or create customer
 async function getOrCreateCustomer(phoneNumber, name) {
     let { data: customer } = await supabase
         .from('whatsapp_customers')
