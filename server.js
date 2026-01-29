@@ -107,17 +107,21 @@ app.post('/webhook', async (req, res) => {
 
                 console.log(`📩 Message from ${from}: ${messageBody}`);
 
-                // Send read receipt
-                await sendReadReceipt(messageId);
+                // Only process text messages
+                if (messageBody && messageBody.trim() !== '') {
+                    // Mark as read + show typing indicator
+                    await sendReadReceipt(messageId, from, true);
 
-                // Process message with AI
-                await handleIntelligentMessage(from, messageBody, customerName);
+                    // Process message with AI (now passing messageId + phoneNumber)
+                    await handleIntelligentMessage(from, messageBody, customerName, messageId);
+                }
             }
         }
     } catch (error) {
         console.error('❌ Webhook Error:', error);
     }
 });
+
 
 // ============================================
 // CHATBOT API ROUTES
@@ -473,6 +477,9 @@ async function sendReadReceipt(messageId, showTyping = false) {
     try {
         const payload = {
             messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to: phoneNumber,
+            type: 'status',
             status: 'read',
             message_id: messageId
         };
@@ -523,7 +530,7 @@ async function handleIntelligentMessage(phoneNumber, message, customerName, mess
 
         if (isOrderIntent) {
             // Mark as read + show typing indicator
-            await sendReadReceipt(messageId, true);
+            await sendReadReceipt(messageId, phoneNumber, true);
 
             // Generate personalized order response
             aiResponse = await generateOrderResponse(customer, conversationHistory);
@@ -538,7 +545,7 @@ async function handleIntelligentMessage(phoneNumber, message, customerName, mess
 
         } else {
             // Mark as read + show typing indicator
-            await sendReadReceipt(messageId, true);
+            await sendReadReceipt(messageId, phoneNumber, true);
 
             // General AI response
             aiResponse = await generateSmartResponse(message, conversationHistory, customer);
