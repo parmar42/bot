@@ -493,11 +493,11 @@ async function sendReadReceipt(messageId) {
     }
 }
 
-        // Simulate typing delay
-        await new Promise(resolve => setTimeout(resolve, 2000));
-    } catch (error) {
-        console.error('Typing indicator error:', error.response?.data);
-    }
+// Send Typing Indicator (natural WhatsApp typing animation)
+async function sendTypingIndicator(phoneNumber, durationMs = 2000) {
+    // WhatsApp shows "typing..." automatically during response delay
+    // Just add a human-like pause
+    await new Promise(resolve => setTimeout(resolve, durationMs));
 }
 
 // Main Message Handler
