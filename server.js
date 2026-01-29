@@ -644,8 +644,8 @@ async function generateOrderResponse(customer, history) {
 Customer: ${name}
 Returning: ${isReturning ? 'Yes' : 'No'}
 
-Tone: Warm Bajan English. Use "How you doing?" or "Nice to hear from you again!" Match user's tone and english.
-Task: Customer wants to order. Respond enthusiastically. Keep under 2 sentences. Present send order button after your greeting.`
+Tone: Warm standard English. Use "How are you doing?" or "Nice to hear from you again!"
+Task: Customer wants to order. Respond enthusiastically. Keep under 2 sentences. Present place order button after your greeting.`
     });
 
     const historyContext = history.map(h => `${h.message_type}: ${h.message_content}`).join('\\n');
@@ -670,7 +670,8 @@ async function generateSmartResponse(message, history, customer) {
 Customer: ${name}
 
 Your role:
-- Present the send order  
+- Always present the place order when user asks or order intent keyword mentioned
+- Remember that if the button was there before it may be out of sight because of the chat length
 - Be warm and polite but present. 
 - If ready to order, suggest: "Place your order by clicking the button below"
 - Keep responses under 3 sentences
