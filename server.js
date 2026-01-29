@@ -478,8 +478,8 @@ async function sendReadReceipt(messageId, phoneNumber, showTyping = false) {
             messaging_product: 'whatsapp',
             recipient_type: 'individual',
             to: phoneNumber,           // ← now correctly passed in
-            type: 'status',
             status: 'read',
+            typing_indicator: { type: 'text' }
             message_id: messageId
         };
 
