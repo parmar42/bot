@@ -89,10 +89,9 @@ app.post('/webhook', async (req, res) => {
         const body = req.body;
         console.log('📨 Incoming webhook POST');
 
-        // Quick 200 response (Meta requires within 20 seconds)
+        // Quick 200 (required within 20s)
         res.sendStatus(200);
 
-        // Process WhatsApp message
         if (body.object === 'whatsapp_business_account') {
             const entry = body.entry?.[0];
             const changes = entry?.changes?.[0];
@@ -107,12 +106,11 @@ app.post('/webhook', async (req, res) => {
 
                 console.log(`📩 Message from ${from}: ${messageBody}`);
 
-                // Only process text messages
                 if (messageBody && messageBody.trim() !== '') {
-                    // Mark as read + show typing indicator
-                    await sendReadReceipt(messageId, from, true);
+                    // Mark as read + show typing (3 dots)
+                    await sendReadReceipt(messageId, true);
 
-                    // Process message with AI (passing messageId + phoneNumber)
+                    // Process with AI
                     await handleIntelligentMessage(from, messageBody, customerName, messageId);
                 }
             }
@@ -471,25 +469,22 @@ app.use((req, res) => {
 // WHATSAPP HELPER FUNCTIONS
 // ============================================
 
-// Send Read Receipt + Typing Indicator (requires messageId and phoneNumber)
-async function sendReadReceipt(messageId, phoneNumber, showTyping = false) {
+// Send Read Receipt + Typing Indicator
+async function sendReadReceipt(messageId, showTyping = false) {
     try {
         const payload = {
-            messaging_product: 'whatsapp',
-            recipient_type: 'individual',
-            to: phoneNumber,           // ← now correctly passed in
-            status: 'read',
-            typing_indicator: { type: 'text' }
-            message_id: messageId
+            messaging_product: 'whatsapp',  // Required
+            status: 'read',                 // Mark message as read
+            message_id: messageId           // From the incoming webhook
         };
 
-        // Add typing indicator if requested
+        // Optional: show typing indicator
         if (showTyping) {
             payload.typing_indicator = { type: 'text' };
         }
 
         await axios.post(
-            `https://graph.facebook.com/v20.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+            `https://graph.facebook.com/v24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
             payload,
             {
                 headers: {
@@ -501,58 +496,48 @@ async function sendReadReceipt(messageId, phoneNumber, showTyping = false) {
 
         console.log(
             showTyping
-                ? '✓ Read receipt + typing indicator sent'
-                : '✓ Read receipt sent'
+                ? '✓ Read receipt + typing indicator sent (v24.0)'
+                : '✓ Read receipt sent (v24.0)'
         );
 
     } catch (error) {
-        // Safely log error response data if it exists
-        console.error('Read receipt error:', error.response?.data || error.message || error);
+        console.error('Read receipt error:', {
+            status: error.response?.status,
+            data: error.response?.data,
+            message: error.message
+        });
     }
 }
+
 
 // Main Message Handler (with correct typing)
 async function handleIntelligentMessage(phoneNumber, message, customerName, messageId) {
     try {
-        // Get or create customer
-        let customer = await getOrCreateCustomer(phoneNumber, customerName);
-
-        // Save incoming message
+        const customer = await getOrCreateCustomer(phoneNumber, customerName);
         await saveConversation(customer.id, phoneNumber, 'incoming', message);
 
-        // Get conversation history
-        const conversationHistory = await getConversationHistory(phoneNumber, 5);
-
-        // Check if order-related
-        const isOrderIntent = detectOrderIntent(message);
-
+        const history = await getConversationHistory(phoneNumber, 5);
+        const isOrder = detectOrderIntent(message);
         let aiResponse;
 
-        if (isOrderIntent) {
-            // Mark as read + show typing indicator
-            await sendReadReceipt(messageId, phoneNumber, true);
+        if (isOrder) {
+            // Mark as read + show 3-dots typing indicator
+            await sendReadReceipt(messageId, true);
 
-            // Generate personalized order response
-            aiResponse = await generateOrderResponse(customer, conversationHistory);
+            aiResponse = await generateOrderResponse(customer, history);
             await sendTextMessage(phoneNumber, aiResponse);
 
-            // Wait then send order button
             await new Promise(resolve => setTimeout(resolve, 1000));
             await sendOrderButton(phoneNumber, customer.customer_name || 'friend');
-
-            // Track order attempt
             await createOrderRecord(customer.id, phoneNumber);
-
         } else {
-            // Mark as read + show typing indicator
-            await sendReadReceipt(messageId, phoneNumber, true);
+            // Mark as read + show 3-dots typing indicator
+            await sendReadReceipt(messageId, true);
 
-            // General AI response
-            aiResponse = await generateSmartResponse(message, conversationHistory, customer);
+            aiResponse = await generateSmartResponse(message, history, customer);
             await sendTextMessage(phoneNumber, aiResponse);
         }
 
-        // Save AI response
         await saveConversation(customer.id, phoneNumber, 'outgoing', aiResponse);
 
     } catch (error) {
@@ -560,6 +545,7 @@ async function handleIntelligentMessage(phoneNumber, message, customerName, mess
         await sendTextMessage(phoneNumber, "Sorry, I having some trouble right now. Give me a second!");
     }
 }
+
 
 // Database: Get or create customer
 async function getOrCreateCustomer(phoneNumber, name) {
