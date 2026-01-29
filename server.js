@@ -4,6 +4,7 @@ const cors = require('cors');
 const { createServer } = require('http');
 const { createClient } = require('@supabase/supabase-js');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const axios = require('axios');
 
 // 2. ENVIRONMENT VARIABLES - Validate before using
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -117,6 +118,63 @@ app.post('/api/chat', async (req, res) => {
                 maxOutputTokens: 500,
             }
         });
+
+// ============================================
+// WHATSAPP WEBHOOK ROUTES
+// ============================================
+
+// Webhook Verification (Meta requires this)
+app.get('/webhook', (req, res) => {
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+
+    if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
+        console.log('✅ WhatsApp Webhook Verified');
+        res.status(200).send(challenge);
+    } else {
+        console.log('❌ Webhook verification failed');
+        res.sendStatus(403);
+    }
+});
+
+// Webhook Message Handler
+app.post('/webhook', async (req, res) => {
+    try {
+        const body = req.body;
+
+        // Quick 200 response (Meta requires within 20 seconds)
+        res.sendStatus(200);
+
+        // Process WhatsApp message
+        if (body.object === 'whatsapp_business_account') {
+            const entry = body.entry?.[0];
+            const changes = entry?.changes?.[0];
+            const value = changes?.value;
+
+            if (value?.messages) {
+                const message = value.messages[0];
+                const from = message.from;
+                const messageBody = message.text?.body;
+                const messageId = message.id;
+                const customerName = value.contacts?.[0]?.profile?.name;
+
+                console.log(`📩 Message from ${from}: ${messageBody}`);
+
+                // Send read receipt
+                await sendReadReceipt(messageId);
+
+                // Send typing indicator
+                await sendTypingIndicator(from);
+
+                // Process message with AI
+                await handleIntelligentMessage(from, messageBody, customerName);
+            }
+        }
+    } catch (error) {
+        console.error('❌ Webhook Error:', error);
+    }
+});
         
         // 3. Create the prompt (The instructions for the AI)
         const systemPrompt = bot.context || "You are a helpful assistant.";
@@ -397,6 +455,307 @@ app.use((req, res) => {
         error: 'Route not found' 
     });
 });
+
+// ============================================
+// WHATSAPP HELPER FUNCTIONS
+// ============================================
+
+// Send Read Receipt
+async function sendReadReceipt(messageId) {
+    try {
+        await axios.post(
+            `https://graph.facebook.com/v24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+            {
+                messaging_product: 'whatsapp',
+                status: 'read',
+                message_id: messageId
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+    } catch (error) {
+        console.error('Read receipt error:', error.response?.data);
+    }
+}
+
+// Send Typing Indicator
+async function sendTypingIndicator(phoneNumber) {
+    try {
+        await axios.post(
+            `https://graph.facebook.com/v24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+            {
+                messaging_product: 'whatsapp',
+                recipient_type: 'individual',
+                to: phoneNumber,
+                type: 'text',
+                text: { body: '⌛' }
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        // Simulate typing delay
+        await new Promise(resolve => setTimeout(resolve, 2000));
+    } catch (error) {
+        console.error('Typing indicator error:', error.response?.data);
+    }
+}
+
+// Main Message Handler
+async function handleIntelligentMessage(phoneNumber, message, customerName) {
+    try {
+        // Get or create customer
+        let customer = await getOrCreateCustomer(phoneNumber, customerName);
+
+        // Save incoming message
+        await saveConversation(customer.id, phoneNumber, 'incoming', message);
+
+        // Get conversation history
+        const conversationHistory = await getConversationHistory(phoneNumber, 5);
+
+        // Check if order-related
+        const isOrderIntent = detectOrderIntent(message);
+
+        let aiResponse;
+
+        if (isOrderIntent) {
+            // Generate personalized order response
+            aiResponse = await generateOrderResponse(customer, conversationHistory);
+            await sendTextMessage(phoneNumber, aiResponse);
+
+            // Wait then send order button
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await sendOrderButton(phoneNumber, customer.customer_name || 'friend');
+
+            // Track order attempt
+            await createOrderRecord(customer.id, phoneNumber);
+
+        } else {
+            // General AI response
+            aiResponse = await generateSmartResponse(message, conversationHistory, customer);
+            await sendTextMessage(phoneNumber, aiResponse);
+        }
+
+        // Save AI response
+        await saveConversation(customer.id, phoneNumber, 'outgoing', aiResponse);
+
+    } catch (error) {
+        console.error('❌ Message handling error:', error);
+        await sendTextMessage(phoneNumber, "Sorry, I having some trouble right now. Give me a second!");
+    }
+}
+
+// Database: Get or Create Customer
+async function getOrCreateCustomer(phoneNumber, name) {
+    let { data: customer } = await _supabase
+        .from('whatsapp_customers')
+        .select('*')
+        .eq('phone_number', phoneNumber)
+        .single();
+
+    if (customer) {
+        await _supabase
+            .from('whatsapp_customers')
+            .update({
+                last_interaction: new Date().toISOString(),
+                total_interactions: customer.total_interactions + 1,
+                customer_name: name || customer.customer_name
+            })
+            .eq('phone_number', phoneNumber);
+
+        return { ...customer, customer_name: name || customer.customer_name };
+    } else {
+        const { data: newCustomer } = await _supabase
+            .from('whatsapp_customers')
+            .insert([{
+                phone_number: phoneNumber,
+                customer_name: name,
+                total_interactions: 1
+            }])
+            .select()
+            .single();
+
+        return newCustomer;
+    }
+}
+
+// Database: Save Conversation
+async function saveConversation(customerId, phoneNumber, type, content) {
+    await _supabase
+        .from('whatsapp_conversations')
+        .insert([{
+            customer_id: customerId,
+            phone_number: phoneNumber,
+            message_type: type,
+            message_content: content
+        }]);
+}
+
+// Database: Get Conversation History
+async function getConversationHistory(phoneNumber, limit = 5) {
+    const { data } = await _supabase
+        .from('whatsapp_conversations')
+        .select('message_type, message_content, created_at')
+        .eq('phone_number', phoneNumber)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+    return data?.reverse() || [];
+}
+
+// Database: Create Order Record
+async function createOrderRecord(customerId, phoneNumber) {
+    await _supabase
+        .from('whatsapp_orders')
+        .insert([{
+            customer_id: customerId,
+            phone_number: phoneNumber,
+            status: 'pending'
+        }]);
+}
+
+// AI: Detect Order Intent
+function detectOrderIntent(message) {
+    const orderKeywords = [
+        'order', 'menu', 'food', 'hungry', 'eat', 'delivery',
+        'pickup', 'want', 'get', 'buy', 'purchase', 'place'
+    ];
+    const lowerMessage = message.toLowerCase();
+    return orderKeywords.some(keyword => lowerMessage.includes(keyword));
+}
+
+// AI: Generate Order Response
+async function generateOrderResponse(customer, history) {
+    const name = customer.customer_name || 'friend';
+    const isReturning = customer.total_interactions > 1;
+
+    const model = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash",
+        systemInstruction: `You are a friendly Bajan restaurant assistant for Tap & Serve.
+
+Customer: ${name}
+Returning: ${isReturning ? 'Yes' : 'No'}
+
+Tone: Warm Bajan English. Use "How you doing?" or "Nice to hear from you again!"
+Task: Customer wants to order. Respond enthusiastically. Keep under 2 sentences.`
+    });
+
+    const historyContext = history.map(h => `${h.message_type}: ${h.message_content}`).join('\n');
+    const prompt = `Recent conversation:\n${historyContext}\n\nRespond warmly about their order intent.`;
+
+    const result = await model.generateContent(prompt);
+    return result.response.text();
+}
+
+// AI: Generate Smart Response
+async function generateSmartResponse(message, history, customer) {
+    const name = customer.customer_name || 'friend';
+
+    const model = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash",
+        systemInstruction: `You are a helpful Bajan assistant for Tap & Serve restaurant ordering system.
+
+Customer: ${name}
+
+Your role:
+- Answer questions about ordering, menu, delivery
+- Be warm and conversational (Bajan style)
+- If ready to order, suggest: "Want me to send you the order link?"
+- Keep responses under 3 sentences
+
+Style: Friendly Bajan English. Natural, not robotic.`
+    });
+
+    const historyContext = history.slice(-3).map(h => 
+        `${h.message_type === 'incoming' ? 'Customer' : 'You'}: ${h.message_content}`
+    ).join('\n');
+
+    const prompt = `Conversation:\n${historyContext}\n\nCustomer: ${message}\n\nYour response:`;
+
+    const result = await model.generateContent(prompt);
+    return result.response.text();
+}
+
+// WhatsApp: Send Text Message
+async function sendTextMessage(phoneNumber, text) {
+    try {
+        await axios.post(
+            `https://graph.facebook.com/v24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+            {
+                messaging_product: 'whatsapp',
+                recipient_type: 'individual',
+                to: phoneNumber,
+                type: 'text',
+                text: { body: text }
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        console.log(`✓ Sent: ${text.substring(0, 50)}...`);
+    } catch (error) {
+        console.error('Send message error:', error.response?.data);
+    }
+}
+
+// WhatsApp: Send Order Button
+async function sendOrderButton(phoneNumber, customerName) {
+    const orderUrl = `https://tapserve.onrender.com/premium-orders.html?wa_number=${phoneNumber}`;
+
+    try {
+        await axios.post(
+            `https://graph.facebook.com/V24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+            {
+                messaging_product: 'whatsapp',
+                recipient_type: 'individual',
+                to: phoneNumber,
+                type: 'interactive',
+                interactive: {
+                    type: 'button',
+                    body: {
+                        text: `Alright ${customerName}, ready when you are! 👇`
+                    },
+                    action: {
+                        buttons: [
+                            {
+                                type: 'reply',
+                                reply: {
+                                    id: 'place_order',
+                                    title: '🍽️ Place Order'
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        // Send direct link as backup
+        await new Promise(resolve => setTimeout(resolve, 500));
+        await sendTextMessage(phoneNumber, `Or click here: ${orderUrl}`);
+
+    } catch (error) {
+        console.error('Button send error:', error.response?.data);
+        await sendTextMessage(phoneNumber, `Place your order here: ${orderUrl}`);
+    }
+}
 
 // 6. START SERVER
 const PORT = process.env.PORT || 3000;
