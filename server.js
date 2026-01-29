@@ -501,6 +501,7 @@ async function sendTypingIndicator(phoneNumber, durationMs = 2000) {
 }
 
 // Main Message Handler
+// Main Message Handler
 async function handleIntelligentMessage(phoneNumber, message, customerName) {
     try {
         // Get or create customer
@@ -518,6 +519,9 @@ async function handleIntelligentMessage(phoneNumber, message, customerName) {
         let aiResponse;
 
         if (isOrderIntent) {
+            // Show typing indicator before generating response
+            await sendTypingIndicator(phoneNumber);
+            
             // Generate personalized order response
             aiResponse = await generateOrderResponse(customer, conversationHistory);
             await sendTextMessage(phoneNumber, aiResponse);
@@ -530,6 +534,9 @@ async function handleIntelligentMessage(phoneNumber, message, customerName) {
             await createOrderRecord(customer.id, phoneNumber);
 
         } else {
+            // Show typing indicator before generating response
+            await sendTypingIndicator(phoneNumber);
+            
             // General AI response
             aiResponse = await generateSmartResponse(message, conversationHistory, customer);
             await sendTextMessage(phoneNumber, aiResponse);
