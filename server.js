@@ -206,7 +206,6 @@ Your response:`;
     } catch (err) {
         console.error('Chat error:', err);
         
-        // Handle specific Gemini API errors
         if (err.message?.includes('API key')) {
             return res.status(500).json({ 
                 reply: "AI service configuration error. Please contact support." 
@@ -555,14 +554,14 @@ async function handleIntelligentMessage(phoneNumber, message, customerName) {
 
 // Database: Get or Create Customer
 async function getOrCreateCustomer(phoneNumber, name) {
-    let { data: customer } = await _supabase
+    let { data: customer } = await supabase
         .from('whatsapp_customers')
         .select('*')
         .eq('phone_number', phoneNumber)
         .single();
 
     if (customer) {
-        await _supabase
+        await supabase
             .from('whatsapp_customers')
             .update({
                 last_interaction: new Date().toISOString(),
@@ -573,7 +572,7 @@ async function getOrCreateCustomer(phoneNumber, name) {
 
         return { ...customer, customer_name: name || customer.customer_name };
     } else {
-        const { data: newCustomer } = await _supabase
+        const { data: newCustomer } = await supabase
             .from('whatsapp_customers')
             .insert([{
                 phone_number: phoneNumber,
@@ -589,7 +588,7 @@ async function getOrCreateCustomer(phoneNumber, name) {
 
 // Database: Save Conversation
 async function saveConversation(customerId, phoneNumber, type, content) {
-    await _supabase
+    await supabase
         .from('whatsapp_conversations')
         .insert([{
             customer_id: customerId,
@@ -601,7 +600,7 @@ async function saveConversation(customerId, phoneNumber, type, content) {
 
 // Database: Get Conversation History
 async function getConversationHistory(phoneNumber, limit = 5) {
-    const { data } = await _supabase
+    const { data } = await supabase
         .from('whatsapp_conversations')
         .select('message_type, message_content, created_at')
         .eq('phone_number', phoneNumber)
@@ -613,7 +612,7 @@ async function getConversationHistory(phoneNumber, limit = 5) {
 
 // Database: Create Order Record
 async function createOrderRecord(customerId, phoneNumber) {
-    await _supabase
+    await supabase
         .from('whatsapp_orders')
         .insert([{
             customer_id: customerId,
