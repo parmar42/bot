@@ -642,8 +642,8 @@ async function generateOrderResponse(customer, history) {
 Customer: ${name}
 Returning: ${isReturning ? 'Yes' : 'No'}
 
-Tone: Warm Bajan English. Use "How you doing?" or "Nice to hear from you again!"
-Task: Customer wants to order. Respond enthusiastically. Keep under 2 sentences.`
+Tone: Warm Bajan English. Use "How you doing?" or "Nice to hear from you again!" Match user's tone and english.
+Task: Customer wants to order. Respond enthusiastically. Keep under 2 sentences. Present place order button after your greeting.`
     });
 
     const historyContext = history.map(h => `${h.message_type}: ${h.message_content}`).join('\\n');
