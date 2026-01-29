@@ -728,33 +728,29 @@ async function sendTextMessage(phoneNumber, text) {
     }
 }
 
-// WhatsApp: Send Order Button
+// WhatsApp: Send Order Button (opens in WhatsApp browser)
 async function sendOrderButton(phoneNumber, customerName) {
     const orderUrl = `https://tapserve.onrender.com/premium-orders.html?wa_number=${phoneNumber}`;
 
     try {
         await axios.post(
-            `https://graph.facebook.com/v24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+            `https://graph.facebook.com/v18.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
             {
                 messaging_product: 'whatsapp',
                 recipient_type: 'individual',
                 to: phoneNumber,
                 type: 'interactive',
                 interactive: {
-                    type: 'button',
+                    type: 'cta_url',
                     body: {
-                        text: `Alright ${customerName}, ready when you are! 👇`
+                        text: `Alright ${customerName}, ready when you are! 🍽️`
                     },
                     action: {
-                        buttons: [
-                            {
-                                type: 'reply',
-                                reply: {
-                                    id: 'place_order',
-                                    title: '🍽️ Place Order'
-                                }
-                            }
-                        ]
+                        name: 'cta_url',
+                        parameters: {
+                            display_text: 'Place Order',
+                            url: orderUrl
+                        }
                     }
                 }
             },
@@ -766,13 +762,13 @@ async function sendOrderButton(phoneNumber, customerName) {
             }
         );
 
-        // Send direct link as backup
-        await new Promise(resolve => setTimeout(resolve, 500));
-        await sendTextMessage(phoneNumber, `Or click here: ${orderUrl}`);
+        console.log('✓ Sent order button');
 
     } catch (error) {
         console.error('Button send error:', error.response?.data);
-        await sendTextMessage(phoneNumber, `Place your order here: ${orderUrl}`);
+        
+        // If button fails, send simple fallback
+        await sendTextMessage(phoneNumber, `Sorry ${customerName}, having trouble with the order button. Try again in a moment!`);
     }
 }
 
