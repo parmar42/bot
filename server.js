@@ -110,9 +110,6 @@ app.post('/webhook', async (req, res) => {
                 // Send read receipt
                 await sendReadReceipt(messageId);
 
-                // Send typing indicator
-                await sendTypingIndicator(from);
-
                 // Process message with AI
                 await handleIntelligentMessage(from, messageBody, customerName);
             }
