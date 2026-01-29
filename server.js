@@ -179,7 +179,7 @@ app.post('/api/chat', async (req, res) => {
 
         // 2. Prepare the AI model
         const model = genAI.getGenerativeModel({ 
-            model: "gemini-1.5-flash",
+            model: "gemini-2.5-flash",
             generationConfig: {
                 temperature: 0.7,
                 maxOutputTokens: 500,
@@ -653,7 +653,7 @@ async function generateOrderResponse(customer, history) {
     const isReturning = customer.total_interactions > 1;
 
     const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.5-flash",
         systemInstruction: `You are a friendly Bajan restaurant assistant for Tap & Serve.
 
 Customer: ${name}
@@ -679,7 +679,7 @@ async function generateSmartResponse(message, history, customer) {
     const name = customer.customer_name || 'friend';
 
     const model = genAI.getGenerativeModel({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.5-flash",
         systemInstruction: `You are a helpful Bajan assistant for Tap & Serve restaurant ordering system.
 
 Customer: ${name}
