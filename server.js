@@ -471,16 +471,23 @@ app.use((req, res) => {
 // WHATSAPP HELPER FUNCTIONS
 // ============================================
 
-// Send Read Receipt
-async function sendReadReceipt(messageId) {
+// Send Read Receipt WITH Typing Indicator (24.0+)
+async function sendReadReceipt(messageId, showTyping = true) {
     try {
+        const payload = {
+            messaging_product: 'whatsapp',
+            status: 'read',
+            message_id: messageId
+        };
+
+        // Add typing indicator to the same request
+        if (showTyping) {
+            payload.typing = true;
+        }
+
         await axios.post(
-            `https://graph.facebook.com/v24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
-            {
-                messaging_product: 'whatsapp',
-                status: 'read',
-                message_id: messageId
-            },
+            `https://graph.facebook.com/24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+            payload,
             {
                 headers: {
                     'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
@@ -488,116 +495,69 @@ async function sendReadReceipt(messageId) {
                 }
             }
         );
+
+        console.log('✓ Read receipt + typing indicator sent');
+
     } catch (error) {
         console.error('Read receipt error:', error.response?.data);
     }
 }
 
-// Send Typing Indicator (natural WhatsApp typing animation)
+// Processing Delay (typing indicator already triggered by read receipt)
 async function sendTypingIndicator(phoneNumber, durationMs = 3000) {
-    const methods = [
-        // Method 1: typing status
-        {
-            name: 'typing_status',
-            call: async () => {
-                await axios.post(
-                    `https://graph.facebook.com/v24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
-                    {
-                        messaging_product: 'whatsapp',
-                        to: phoneNumber,
-                        status: 'typing'
-                    },
-                    {
-                        headers: {
-                            'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-                            'Content-Type': 'application/json'
-                        }
-                    }
-                );
-            }
-        },
-        // Method 2: composing action
-        {
-            name: 'composing_action',
-            call: async () => {
-                await axios.post(
-                    `https://graph.facebook.com/v24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
-                    {
-                        messaging_product: 'whatsapp',
-                        to: phoneNumber,
-                        action: 'composing'
-                    },
-                    {
-                        headers: {
-                            'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-                            'Content-Type': 'application/json'
-                        }
-                    }
-                );
-            }
-        },
-        // Method 3: type parameter
-        {
-            name: 'typing_type',
-            call: async () => {
-                await axios.post(
-                    `https://graph.facebook.com/v24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
-                    {
-                        messaging_product: 'whatsapp',
-                        to: phoneNumber,
-                        typing: true
-                    },
-                    {
-                        headers: {
-                            'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-                            'Content-Type': 'application/json'
-                        }
-                    }
-                );
-            }
-        },
-        // Method 4: mark_as_typing
-        {
-            name: 'mark_as_typing',
-            call: async () => {
-                await axios.post(
-                    `https://graph.facebook.com/v24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
-                    {
-                        messaging_product: 'whatsapp',
-                        recipient_type: 'individual',
-                        to: phoneNumber,
-                        type: 'typing_on'
-                    },
-                    {
-                        headers: {
-                            'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-                            'Content-Type': 'application/json'
-                        }
-                    }
-                );
-            }
-        }
-    ];
-
-    // Try each method until one works
-    let success = false;
-    for (const method of methods) {
-        try {
-            await method.call();
-            console.log(`✓ Typing indicator worked: ${method.name}`);
-            success = true;
-            break;
-        } catch (error) {
-            console.log(`✗ ${method.name} failed:`, error.response?.data?.error?.message || error.message);
-        }
-    }
-
-    if (!success) {
-        console.log('⚠️  No typing indicator method worked - using delay only');
-    }
-
-    // Wait for AI processing
+    // Typing indicator was already sent with read receipt
+    // This delay allows it to show while AI processes
     await new Promise(resolve => setTimeout(resolve, durationMs));
+}
+
+// Main Message Handler
+async function handleIntelligentMessage(phoneNumber, message, customerName) {
+    try {
+        // Get or create customer
+        let customer = await getOrCreateCustomer(phoneNumber, customerName);
+
+        // Save incoming message
+        await saveConversation(customer.id, phoneNumber, 'incoming', message);
+
+        // Get conversation history
+        const conversationHistory = await getConversationHistory(phoneNumber, 5);
+
+        // Check if order-related
+        const isOrderIntent = detectOrderIntent(message);
+
+        let aiResponse;
+
+        if (isOrderIntent) {
+            // Show typing delay while AI generates response
+            await sendTypingIndicator(phoneNumber);
+            
+            // Generate personalized order response
+            aiResponse = await generateOrderResponse(customer, conversationHistory);
+            await sendTextMessage(phoneNumber, aiResponse);
+
+            // Wait then send order button
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await sendOrderButton(phoneNumber, customer.customer_name || 'friend');
+
+            // Track order attempt
+            await createOrderRecord(customer.id, phoneNumber);
+
+        } else {
+            // Show typing delay while AI generates response
+            await sendTypingIndicator(phoneNumber);
+            
+            // General AI response
+            aiResponse = await generateSmartResponse(message, conversationHistory, customer);
+            await sendTextMessage(phoneNumber, aiResponse);
+        }
+
+        // Save AI response
+        await saveConversation(customer.id, phoneNumber, 'outgoing', aiResponse);
+
+    } catch (error) {
+        console.error('❌ Message handling error:', error);
+        await sendTextMessage(phoneNumber, "Sorry, I having some trouble right now. Give me a second!");
+    }
 }
 
 // Database: Get or Create Customer
@@ -689,7 +649,7 @@ async function generateOrderResponse(customer, history) {
     const isReturning = customer.total_interactions > 1;
 
     const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
+        model: "gemini-2.0-flash-exp",
         systemInstruction: `You are a friendly Bajan restaurant assistant for Tap & Serve.
 
 Customer: ${name}
@@ -715,7 +675,7 @@ async function generateSmartResponse(message, history, customer) {
     const name = customer.customer_name || 'friend';
 
     const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
+        model: "gemini-2.0-flash-exp",
         systemInstruction: `You are a helpful Bajan assistant for Tap & Serve restaurant ordering system.
 
 Customer: ${name}
@@ -743,7 +703,7 @@ Style: Friendly Bajan English. Natural, not robotic.`
 async function sendTextMessage(phoneNumber, text) {
     try {
         await axios.post(
-            `https://graph.facebook.com/v24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+            `https://graph.facebook.com/24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
             {
                 messaging_product: 'whatsapp',
                 recipient_type: 'individual',
@@ -764,13 +724,13 @@ async function sendTextMessage(phoneNumber, text) {
     }
 }
 
-// WhatsApp: Send Order Button (opens in WhatsApp browser)
+// WhatsApp: Send Order Button
 async function sendOrderButton(phoneNumber, customerName) {
     const orderUrl = `https://tapserve.onrender.com/premium-orders.html?wa_number=${phoneNumber}`;
 
     try {
         await axios.post(
-            `https://graph.facebook.com/v24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+            `https://graph.facebook.com/24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
             {
                 messaging_product: 'whatsapp',
                 recipient_type: 'individual',
@@ -802,8 +762,6 @@ async function sendOrderButton(phoneNumber, customerName) {
 
     } catch (error) {
         console.error('Button send error:', error.response?.data);
-        
-        // If button fails, send simple fallback
         await sendTextMessage(phoneNumber, `Sorry ${customerName}, having trouble with the order button. Try again in a moment!`);
     }
 }
