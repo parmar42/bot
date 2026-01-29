@@ -494,61 +494,110 @@ async function sendReadReceipt(messageId) {
 }
 
 // Send Typing Indicator (natural WhatsApp typing animation)
-async function sendTypingIndicator(phoneNumber, durationMs = 2000) {
-    // WhatsApp shows "typing..." automatically during response delay
-    // Just add a human-like pause
-    await new Promise(resolve => setTimeout(resolve, durationMs));
-}
-
-// Main Message Handler
-// Main Message Handler
-async function handleIntelligentMessage(phoneNumber, message, customerName) {
-    try {
-        // Get or create customer
-        let customer = await getOrCreateCustomer(phoneNumber, customerName);
-
-        // Save incoming message
-        await saveConversation(customer.id, phoneNumber, 'incoming', message);
-
-        // Get conversation history
-        const conversationHistory = await getConversationHistory(phoneNumber, 5);
-
-        // Check if order-related
-        const isOrderIntent = detectOrderIntent(message);
-
-        let aiResponse;
-
-        if (isOrderIntent) {
-            // Show typing indicator before generating response
-            await sendTypingIndicator(phoneNumber);
-            
-            // Generate personalized order response
-            aiResponse = await generateOrderResponse(customer, conversationHistory);
-            await sendTextMessage(phoneNumber, aiResponse);
-
-            // Wait then send order button
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            await sendOrderButton(phoneNumber, customer.customer_name || 'friend');
-
-            // Track order attempt
-            await createOrderRecord(customer.id, phoneNumber);
-
-        } else {
-            // Show typing indicator before generating response
-            await sendTypingIndicator(phoneNumber);
-            
-            // General AI response
-            aiResponse = await generateSmartResponse(message, conversationHistory, customer);
-            await sendTextMessage(phoneNumber, aiResponse);
+async function sendTypingIndicator(phoneNumber, durationMs = 3000) {
+    const methods = [
+        // Method 1: typing status
+        {
+            name: 'typing_status',
+            call: async () => {
+                await axios.post(
+                    `https://graph.facebook.com/v18.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+                    {
+                        messaging_product: 'whatsapp',
+                        to: phoneNumber,
+                        status: 'typing'
+                    },
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+            }
+        },
+        // Method 2: composing action
+        {
+            name: 'composing_action',
+            call: async () => {
+                await axios.post(
+                    `https://graph.facebook.com/v18.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+                    {
+                        messaging_product: 'whatsapp',
+                        to: phoneNumber,
+                        action: 'composing'
+                    },
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+            }
+        },
+        // Method 3: type parameter
+        {
+            name: 'typing_type',
+            call: async () => {
+                await axios.post(
+                    `https://graph.facebook.com/v18.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+                    {
+                        messaging_product: 'whatsapp',
+                        to: phoneNumber,
+                        typing: true
+                    },
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+            }
+        },
+        // Method 4: mark_as_typing
+        {
+            name: 'mark_as_typing',
+            call: async () => {
+                await axios.post(
+                    `https://graph.facebook.com/v18.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+                    {
+                        messaging_product: 'whatsapp',
+                        recipient_type: 'individual',
+                        to: phoneNumber,
+                        type: 'typing_on'
+                    },
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+            }
         }
+    ];
 
-        // Save AI response
-        await saveConversation(customer.id, phoneNumber, 'outgoing', aiResponse);
-
-    } catch (error) {
-        console.error('❌ Message handling error:', error);
-        await sendTextMessage(phoneNumber, "Sorry, I having some trouble right now. Give me a second!");
+    // Try each method until one works
+    let success = false;
+    for (const method of methods) {
+        try {
+            await method.call();
+            console.log(`✓ Typing indicator worked: ${method.name}`);
+            success = true;
+            break;
+        } catch (error) {
+            console.log(`✗ ${method.name} failed:`, error.response?.data?.error?.message || error.message);
+        }
     }
+
+    if (!success) {
+        console.log('⚠️  No typing indicator method worked - using delay only');
+    }
+
+    // Wait for AI processing
+    await new Promise(resolve => setTimeout(resolve, durationMs));
 }
 
 // Database: Get or Create Customer
