@@ -620,7 +620,9 @@ async function createOrderRecord(customerId, phoneNumber) {
 function detectOrderIntent(message) {
     const orderKeywords = [
         'order', 'menu', 'food', 'hungry', 'eat', 'delivery',
-        'pickup', 'want', 'get', 'buy', 'purchase', 'place'
+        'pickup', 'want', 'get', 'buy', 'purchase', 'place', 'send',
+        'button', 'ready', 'place order', 'Hi', 'Hello', 'Good morning',
+        'Good afternoon', 'Good night', 'Good evening', 'Hey'
     ];
     const lowerMessage = message.toLowerCase();
     return orderKeywords.some(keyword => lowerMessage.includes(keyword));
@@ -629,7 +631,7 @@ function detectOrderIntent(message) {
 // AI: Generate Order Response
 async function generateOrderResponse(customer, history) {
     if (!genAI) {
-        return "Hey! Ready to order? Place your order below.";
+        return "Hey! Ready to order? Place your order by clicking the place order button.";
     }
 
     const name = customer.customer_name || 'friend';
@@ -668,7 +670,7 @@ async function generateSmartResponse(message, history, customer) {
 Customer: ${name}
 
 Your role:
-- Present the send order cta.
+- Present the send order  
 - Be warm and polite but present. 
 - If ready to order, suggest: "Place your order by clicking the button below"
 - Keep responses under 3 sentences
