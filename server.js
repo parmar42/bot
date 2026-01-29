@@ -471,27 +471,16 @@ app.use((req, res) => {
 // WHATSAPP HELPER FUNCTIONS
 // ============================================
 
-// ============================================
-// WHATSAPP HELPER FUNCTIONS
-// ============================================
-
-// Send Read Receipt WITH Typing Indicator (v20.0+)
-async function sendReadReceipt(messageId, showTyping = true) {
+// Send Read Receipt
+async function sendReadReceipt(messageId) {
     try {
-        const payload = {
-            messaging_product: 'whatsapp',
-            status: 'read',
-            message_id: messageId
-        };
-
-        // Add typing indicator to the same request
-        if (showTyping) {
-            payload.typing = true;
-        }
-
         await axios.post(
             `https://graph.facebook.com/v20.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
-            payload,
+            {
+                messaging_product: 'whatsapp',
+                status: 'read',
+                message_id: messageId
+            },
             {
                 headers: {
                     'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
@@ -499,65 +488,60 @@ async function sendReadReceipt(messageId, showTyping = true) {
                 }
             }
         );
-
-        console.log('✓ Read receipt + typing indicator sent');
-
     } catch (error) {
         console.error('Read receipt error:', error.response?.data);
     }
 }
 
-// Processing Delay (typing indicator already triggered by read receipt)
-async function sendTypingIndicator(phoneNumber, durationMs = 3000) {
-    // Typing indicator was already sent with read receipt
-    // This delay allows it to show while AI processes
-    await new Promise(resolve => setTimeout(resolve, durationMs));
+// Send Typing Status
+async function sendTypingStatus(phoneNumber, isTyping = true) {
+    try {
+        await axios.post(
+            `https://graph.facebook.com/v20.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+            {
+                messaging_product: 'whatsapp',
+                recipient_type: 'individual',
+                to: phoneNumber,
+                type: 'typing',
+                typing: isTyping
+            },
+            {
+                headers: {
+                    'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+    } catch (error) {
+        console.error('Typing status error:', error.response?.data);
+    }
 }
 
 // Main Message Handler
 async function handleIntelligentMessage(phoneNumber, message, customerName) {
     try {
-        // Get or create customer
         let customer = await getOrCreateCustomer(phoneNumber, customerName);
-
-        // Save incoming message
         await saveConversation(customer.id, phoneNumber, 'incoming', message);
-
-        // Get conversation history
         const conversationHistory = await getConversationHistory(phoneNumber, 5);
-
-        // Check if order-related
         const isOrderIntent = detectOrderIntent(message);
-
         let aiResponse;
 
         if (isOrderIntent) {
-            // Show typing delay while AI generates response
-            await sendTypingIndicator(phoneNumber);
-            
-            // Generate personalized order response
+            await sendTypingStatus(phoneNumber, true);
             aiResponse = await generateOrderResponse(customer, conversationHistory);
+            await sendTypingStatus(phoneNumber, false);
             await sendTextMessage(phoneNumber, aiResponse);
-
-            // Wait then send order button
             await new Promise(resolve => setTimeout(resolve, 1000));
             await sendOrderButton(phoneNumber, customer.customer_name || 'friend');
-
-            // Track order attempt
             await createOrderRecord(customer.id, phoneNumber);
-
         } else {
-            // Show typing delay while AI generates response
-            await sendTypingIndicator(phoneNumber);
-            
-            // General AI response
+            await sendTypingStatus(phoneNumber, true);
             aiResponse = await generateSmartResponse(message, conversationHistory, customer);
+            await sendTypingStatus(phoneNumber, false);
             await sendTextMessage(phoneNumber, aiResponse);
         }
 
-        // Save AI response
         await saveConversation(customer.id, phoneNumber, 'outgoing', aiResponse);
-
     } catch (error) {
         console.error('❌ Message handling error:', error);
         await sendTextMessage(phoneNumber, "Sorry, I having some trouble right now. Give me a second!");
@@ -581,7 +565,6 @@ async function getOrCreateCustomer(phoneNumber, name) {
                 customer_name: name || customer.customer_name
             })
             .eq('phone_number', phoneNumber);
-
         return { ...customer, customer_name: name || customer.customer_name };
     } else {
         const { data: newCustomer } = await supabase
@@ -593,7 +576,6 @@ async function getOrCreateCustomer(phoneNumber, name) {
             }])
             .select()
             .single();
-
         return newCustomer;
     }
 }
@@ -618,7 +600,6 @@ async function getConversationHistory(phoneNumber, limit = 5) {
         .eq('phone_number', phoneNumber)
         .order('created_at', { ascending: false })
         .limit(limit);
-
     return data?.reverse() || [];
 }
 
@@ -648,12 +629,10 @@ async function generateOrderResponse(customer, history) {
     if (!genAI) {
         return "Hey! Ready to order? I'll send you the link.";
     }
-
     const name = customer.customer_name || 'friend';
     const isReturning = customer.total_interactions > 1;
-
     const model = genAI.getGenerativeModel({
-        model: "gemini-2.0-flash-exp",
+        model: "gemini-2.5-flash",
         systemInstruction: `You are a friendly Bajan restaurant assistant for Tap & Serve.
 
 Customer: ${name}
@@ -662,10 +641,8 @@ Returning: ${isReturning ? 'Yes' : 'No'}
 Tone: Warm Bajan English. Use "How you doing?" or "Nice to hear from you again!"
 Task: Customer wants to order. Respond enthusiastically. Keep under 2 sentences.`
     });
-
     const historyContext = history.map(h => `${h.message_type}: ${h.message_content}`).join('\n');
     const prompt = `Recent conversation:\n${historyContext}\n\nRespond warmly about their order intent.`;
-
     const result = await model.generateContent(prompt);
     return result.response.text();
 }
@@ -675,11 +652,9 @@ async function generateSmartResponse(message, history, customer) {
     if (!genAI) {
         return "Thanks for your message! How can I help you today?";
     }
-
     const name = customer.customer_name || 'friend';
-
     const model = genAI.getGenerativeModel({
-        model: "gemini-2.0-flash-exp",
+        model: "gemini-2.5-flash",
         systemInstruction: `You are a helpful Bajan assistant for Tap & Serve restaurant ordering system.
 
 Customer: ${name}
@@ -692,13 +667,10 @@ Your role:
 
 Style: Friendly Bajan English. Natural, not robotic.`
     });
-
     const historyContext = history.slice(-3).map(h => 
         `${h.message_type === 'incoming' ? 'Customer' : 'You'}: ${h.message_content}`
     ).join('\n');
-
     const prompt = `Conversation:\n${historyContext}\n\nCustomer: ${message}\n\nYour response:`;
-
     const result = await model.generateContent(prompt);
     return result.response.text();
 }
@@ -731,7 +703,6 @@ async function sendTextMessage(phoneNumber, text) {
 // WhatsApp: Send Order Button
 async function sendOrderButton(phoneNumber, customerName) {
     const orderUrl = `https://tapserve.onrender.com/premium-orders.html?wa_number=${phoneNumber}`;
-
     try {
         await axios.post(
             `https://graph.facebook.com/v20.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
@@ -761,9 +732,7 @@ async function sendOrderButton(phoneNumber, customerName) {
                 }
             }
         );
-
         console.log('✓ Sent order button');
-
     } catch (error) {
         console.error('Button send error:', error.response?.data);
         await sendTextMessage(phoneNumber, `Sorry ${customerName}, having trouble with the order button. Try again in a moment!`);
