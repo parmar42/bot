@@ -629,7 +629,7 @@ function detectOrderIntent(message) {
 // AI: Generate Order Response
 async function generateOrderResponse(customer, history) {
     if (!genAI) {
-        return "Hey! Ready to order? I'll send you the link.";
+        return "Hey! Ready to order? Place your order below.";
     }
 
     const name = customer.customer_name || 'friend';
@@ -643,7 +643,7 @@ Customer: ${name}
 Returning: ${isReturning ? 'Yes' : 'No'}
 
 Tone: Warm Bajan English. Use "How you doing?" or "Nice to hear from you again!" Match user's tone and english.
-Task: Customer wants to order. Respond enthusiastically. Keep under 2 sentences. Present place order button after your greeting.`
+Task: Customer wants to order. Respond enthusiastically. Keep under 2 sentences. Present send order button after your greeting.`
     });
 
     const historyContext = history.map(h => `${h.message_type}: ${h.message_content}`).join('\\n');
@@ -656,7 +656,7 @@ Task: Customer wants to order. Respond enthusiastically. Keep under 2 sentences.
 // AI: Generate Smart Response
 async function generateSmartResponse(message, history, customer) {
     if (!genAI) {
-        return "Thanks for your message! How can I help you today?";
+        return "Thanks for your message! Ready to place your order?";
     }
 
     const name = customer.customer_name || 'friend';
@@ -668,9 +668,9 @@ async function generateSmartResponse(message, history, customer) {
 Customer: ${name}
 
 Your role:
-- Answer questions about ordering, menu, delivery
-- Be warm and conversational (Bajan style)
-- If ready to order, suggest: "Want me to send you the order link?"
+- Present the send order cta.
+- Be warm and polite but present. 
+- If ready to order, suggest: "Place your order by clicking the button below"
 - Keep responses under 3 sentences
 
 Style: Friendly Bajan English. Natural, not robotic.`
@@ -727,7 +727,7 @@ async function sendOrderButton(phoneNumber, customerName) {
                 interactive: {
                     type: 'cta_url',
                     body: {
-                        text: `Alright ${customerName}, ready when you are! 🍽️`
+                        text: `Alright ${customerName}, here goes! 🍽️`
                     },
                     action: {
                         name: 'cta_url',
