@@ -59,6 +59,73 @@ app.get('/health', (req, res) => {
     });
 });
 
+// ============================================
+// WHATSAPP WEBHOOK ROUTES
+// ============================================
+
+// Webhook Verification (Meta requires this)
+app.get('/webhook', (req, res) => {
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+
+    console.log('🔍 Webhook verification attempt');
+    console.log('Mode:', mode);
+    console.log('Token received:', token);
+    console.log('Token expected:', process.env.WHATSAPP_VERIFY_TOKEN);
+
+    if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
+        console.log('✅ WhatsApp Webhook Verified');
+        res.status(200).send(challenge);
+    } else {
+        console.log('❌ Webhook verification failed');
+        res.sendStatus(403);
+    }
+});
+
+// Webhook Message Handler
+app.post('/webhook', async (req, res) => {
+    try {
+        const body = req.body;
+        console.log('📨 Incoming webhook POST');
+
+        // Quick 200 response (Meta requires within 20 seconds)
+        res.sendStatus(200);
+
+        // Process WhatsApp message
+        if (body.object === 'whatsapp_business_account') {
+            const entry = body.entry?.[0];
+            const changes = entry?.changes?.[0];
+            const value = changes?.value;
+
+            if (value?.messages) {
+                const message = value.messages[0];
+                const from = message.from;
+                const messageBody = message.text?.body;
+                const messageId = message.id;
+                const customerName = value.contacts?.[0]?.profile?.name;
+
+                console.log(`📩 Message from ${from}: ${messageBody}`);
+
+                // Send read receipt
+                await sendReadReceipt(messageId);
+
+                // Send typing indicator
+                await sendTypingIndicator(from);
+
+                // Process message with AI
+                await handleIntelligentMessage(from, messageBody, customerName);
+            }
+        }
+    } catch (error) {
+        console.error('❌ Webhook Error:', error);
+    }
+});
+
+// ============================================
+// CHATBOT API ROUTES
+// ============================================
+
 // AI Chat endpoint
 app.post('/api/chat', async (req, res) => {
     try {
@@ -112,69 +179,12 @@ app.post('/api/chat', async (req, res) => {
 
         // 2. Prepare the AI model
         const model = genAI.getGenerativeModel({ 
-            model: "gemini-2.5-flash",
+            model: "gemini-1.5-flash",
             generationConfig: {
                 temperature: 0.7,
                 maxOutputTokens: 500,
             }
         });
-
-// ============================================
-// WHATSAPP WEBHOOK ROUTES
-// ============================================
-
-// Webhook Verification (Meta requires this)
-app.get('/webhook', (req, res) => {
-    const mode = req.query['hub.mode'];
-    const token = req.query['hub.verify_token'];
-    const challenge = req.query['hub.challenge'];
-
-    if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
-        console.log('✅ WhatsApp Webhook Verified');
-        res.status(200).send(challenge);
-    } else {
-        console.log('❌ Webhook verification failed');
-        res.sendStatus(403);
-    }
-});
-
-// Webhook Message Handler
-app.post('/webhook', async (req, res) => {
-    try {
-        const body = req.body;
-
-        // Quick 200 response (Meta requires within 20 seconds)
-        res.sendStatus(200);
-
-        // Process WhatsApp message
-        if (body.object === 'whatsapp_business_account') {
-            const entry = body.entry?.[0];
-            const changes = entry?.changes?.[0];
-            const value = changes?.value;
-
-            if (value?.messages) {
-                const message = value.messages[0];
-                const from = message.from;
-                const messageBody = message.text?.body;
-                const messageId = message.id;
-                const customerName = value.contacts?.[0]?.profile?.name;
-
-                console.log(`📩 Message from ${from}: ${messageBody}`);
-
-                // Send read receipt
-                await sendReadReceipt(messageId);
-
-                // Send typing indicator
-                await sendTypingIndicator(from);
-
-                // Process message with AI
-                await handleIntelligentMessage(from, messageBody, customerName);
-            }
-        }
-    } catch (error) {
-        console.error('❌ Webhook Error:', error);
-    }
-});
         
         // 3. Create the prompt (The instructions for the AI)
         const systemPrompt = bot.context || "You are a helpful assistant.";
@@ -206,6 +216,7 @@ Your response:`;
     } catch (err) {
         console.error('Chat error:', err);
         
+        // Handle specific Gemini API errors
         if (err.message?.includes('API key')) {
             return res.status(500).json({ 
                 reply: "AI service configuration error. Please contact support." 
@@ -451,7 +462,8 @@ app.delete('/api/delete-bot/:id', async (req, res) => {
 // 404 handler for undefined routes
 app.use((req, res) => {
     res.status(404).json({ 
-        error: 'Route not found' 
+        error: 'Route not found',
+        path: req.path
     });
 });
 
@@ -463,7 +475,7 @@ app.use((req, res) => {
 async function sendReadReceipt(messageId) {
     try {
         await axios.post(
-            `https://graph.facebook.com/v24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+            `https://graph.facebook.com/v18.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
             {
                 messaging_product: 'whatsapp',
                 status: 'read',
@@ -485,7 +497,7 @@ async function sendReadReceipt(messageId) {
 async function sendTypingIndicator(phoneNumber) {
     try {
         await axios.post(
-            `https://graph.facebook.com/v24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+            `https://graph.facebook.com/v18.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
             {
                 messaging_product: 'whatsapp',
                 recipient_type: 'individual',
@@ -633,6 +645,10 @@ function detectOrderIntent(message) {
 
 // AI: Generate Order Response
 async function generateOrderResponse(customer, history) {
+    if (!genAI) {
+        return "Hey! Ready to order? I'll send you the link.";
+    }
+
     const name = customer.customer_name || 'friend';
     const isReturning = customer.total_interactions > 1;
 
@@ -656,6 +672,10 @@ Task: Customer wants to order. Respond enthusiastically. Keep under 2 sentences.
 
 // AI: Generate Smart Response
 async function generateSmartResponse(message, history, customer) {
+    if (!genAI) {
+        return "Thanks for your message! How can I help you today?";
+    }
+
     const name = customer.customer_name || 'friend';
 
     const model = genAI.getGenerativeModel({
@@ -687,7 +707,7 @@ Style: Friendly Bajan English. Natural, not robotic.`
 async function sendTextMessage(phoneNumber, text) {
     try {
         await axios.post(
-            `https://graph.facebook.com/v24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+            `https://graph.facebook.com/v18.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
             {
                 messaging_product: 'whatsapp',
                 recipient_type: 'individual',
@@ -714,7 +734,7 @@ async function sendOrderButton(phoneNumber, customerName) {
 
     try {
         await axios.post(
-            `https://graph.facebook.com/V24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+            `https://graph.facebook.com/v18.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
             {
                 messaging_product: 'whatsapp',
                 recipient_type: 'individual',
@@ -763,6 +783,7 @@ const HOST = '0.0.0.0'; // CRITICAL for Render/Railway/Heroku
 httpServer.listen(PORT, HOST, () => {
     console.log(`✅ Server running on ${HOST}:${PORT}`);
     console.log(`📍 Health check: http://localhost:${PORT}/health`);
+    console.log(`📞 WhatsApp webhook: http://localhost:${PORT}/webhook`);
     console.log(`🤖 API Base URL: http://localhost:${PORT}/api`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`📊 Services:`);
@@ -778,4 +799,3 @@ process.on('SIGTERM', () => {
         process.exit(0);
     });
 });
-
