@@ -471,7 +471,11 @@ app.use((req, res) => {
 // WHATSAPP HELPER FUNCTIONS
 // ============================================
 
-// Send Read Receipt WITH Typing Indicator (24.0+)
+// ============================================
+// WHATSAPP HELPER FUNCTIONS
+// ============================================
+
+// Send Read Receipt WITH Typing Indicator (v20.0+)
 async function sendReadReceipt(messageId, showTyping = true) {
     try {
         const payload = {
@@ -486,7 +490,7 @@ async function sendReadReceipt(messageId, showTyping = true) {
         }
 
         await axios.post(
-            `https://graph.facebook.com/24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+            `https://graph.facebook.com/v20.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
             payload,
             {
                 headers: {
@@ -703,7 +707,7 @@ Style: Friendly Bajan English. Natural, not robotic.`
 async function sendTextMessage(phoneNumber, text) {
     try {
         await axios.post(
-            `https://graph.facebook.com/24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+            `https://graph.facebook.com/v20.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
             {
                 messaging_product: 'whatsapp',
                 recipient_type: 'individual',
@@ -730,7 +734,7 @@ async function sendOrderButton(phoneNumber, customerName) {
 
     try {
         await axios.post(
-            `https://graph.facebook.com/24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+            `https://graph.facebook.com/v20.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
             {
                 messaging_product: 'whatsapp',
                 recipient_type: 'individual',
