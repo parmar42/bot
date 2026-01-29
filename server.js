@@ -493,26 +493,6 @@ async function sendReadReceipt(messageId) {
     }
 }
 
-// Send Typing Indicator
-async function sendTypingIndicator(phoneNumber) {
-    try {
-        await axios.post(
-            `https://graph.facebook.com/v24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
-            {
-                messaging_product: 'whatsapp',
-                recipient_type: 'individual',
-                to: phoneNumber,
-                type: 'text',
-                text: { body: '⌛' }
-            },
-            {
-                headers: {
-                    'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-                    'Content-Type': 'application/json'
-                }
-            }
-        );
-
         // Simulate typing delay
         await new Promise(resolve => setTimeout(resolve, 2000));
     } catch (error) {
