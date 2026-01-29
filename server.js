@@ -501,7 +501,7 @@ async function sendTypingIndicator(phoneNumber, durationMs = 3000) {
             name: 'typing_status',
             call: async () => {
                 await axios.post(
-                    `https://graph.facebook.com/v18.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+                    `https://graph.facebook.com/v24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
                     {
                         messaging_product: 'whatsapp',
                         to: phoneNumber,
@@ -521,7 +521,7 @@ async function sendTypingIndicator(phoneNumber, durationMs = 3000) {
             name: 'composing_action',
             call: async () => {
                 await axios.post(
-                    `https://graph.facebook.com/v18.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+                    `https://graph.facebook.com/v24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
                     {
                         messaging_product: 'whatsapp',
                         to: phoneNumber,
@@ -541,7 +541,7 @@ async function sendTypingIndicator(phoneNumber, durationMs = 3000) {
             name: 'typing_type',
             call: async () => {
                 await axios.post(
-                    `https://graph.facebook.com/v18.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+                    `https://graph.facebook.com/v24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
                     {
                         messaging_product: 'whatsapp',
                         to: phoneNumber,
@@ -561,7 +561,7 @@ async function sendTypingIndicator(phoneNumber, durationMs = 3000) {
             name: 'mark_as_typing',
             call: async () => {
                 await axios.post(
-                    `https://graph.facebook.com/v18.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+                    `https://graph.facebook.com/v24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
                     {
                         messaging_product: 'whatsapp',
                         recipient_type: 'individual',
