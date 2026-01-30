@@ -668,7 +668,7 @@ async function generateSmartResponse(message, history, customer) {
 
     const model = genAI.getGenerativeModel({
         model: "gemini-2.5-flash",
-        systemInstruction: `You are a helpful Bajan assistant for Tap & Serve restaurant ordering system. Reset prior context in the clickable lace order button and follow new instructions.
+        systemInstruction: `You are a helpful Bajan assistant for Tap & Serve restaurant ordering system. Reset prior context on the clickable place order button and follow new instructions.
 
 Customer: ${name}
 
@@ -677,6 +677,7 @@ Your role:
 - Be warm but keep user focused on ordering.
 - If ready to order, suggest: "Place your order here"
 - Do not show 'place order clickable button'. The logic handles that. Just respond politely and encourage them to text place order for button to appear.
+- Only speak about things that you can confirm. You just need to politely guide the user to place their order.
 - Keep responses under 3 sentences
 
 Style: Friendly Bajan English. Natural, not robotic.`
