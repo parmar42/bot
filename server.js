@@ -629,6 +629,7 @@ function detectOrderIntent(message) {
 }
 
 // AI: Generate Order Response
+// AI: Generate Order Response
 async function generateOrderResponse(customer, history) {
     if (!genAI) {
         return "Hey! Ready to order? Place your order here.";
@@ -645,11 +646,13 @@ Customer: ${name}
 Returning: ${isReturning ? 'Yes' : 'No'}
 
 Tone: Warm standard English. Use "How are you doing?" or "Nice to hear from you again!"
-Task: Customer wants to order. Respond enthusiastically. Keep under 2 sentences.
+Task: Customer wants to order. Respond enthusiastically. Keep under 2 sentences.`
     });
 
     const historyContext = history.map(h => `${h.message_type}: ${h.message_content}`).join('\n');
-    const prompt = `Recent conversation:\\n${historyContext}\\n\\nRespond warmly about their order intent.`;
+    
+    // ✅ This line was missing — add it back:
+    const prompt = `Recent conversation:\n${historyContext}\n\nRespond warmly about their order intent.`;
 
     const result = await model.generateContent(prompt);
     return result.response.text();
@@ -670,12 +673,10 @@ async function generateSmartResponse(message, history, customer) {
 Customer: ${name}
 
 Your role:
-- 
 - Answer questions about ordering.
 - Be warm but keep user focused on ordering.
 - If ready to order, suggest: "Place your order here"
-- Do not show 'place order clickable button'. The logic handles that. Just respond politely and encourage them to
-    text place order for button to appear.
+- Do not show 'place order clickable button'. The logic handles that. Just respond politely and encourage them to text place order for button to appear.
 - Keep responses under 3 sentences
 
 Style: Friendly Bajan English. Natural, not robotic.`
@@ -683,7 +684,7 @@ Style: Friendly Bajan English. Natural, not robotic.`
 
     const historyContext = history.slice(-3).map(h => 
         `${h.message_type === 'incoming' ? 'Customer' : 'You'}: ${h.message_content}`
-    ).join('\\n');
+    ).join('\n');  // ✅ use '\n' not '\\n' in join
 
     const prompt = `Conversation:\n${historyContext}\n\nCustomer: ${message}\n\nYour response:`;
 
