@@ -670,7 +670,8 @@ async function generateSmartResponse(message, history, customer) {
 Customer: ${name}
 
 Your role:
-- Always present the place order when user asks or order intent keyword mentioned
+- Always present the clickable place order button when user asks or order intent keyword mentioned. No text based place order,
+    it must be a clickable button.
 - Remember that if the button was there before it may be out of sight because of the chat length
 - Be warm and polite but present. 
 - If ready to order, suggest: "Place your order by clicking the button below"
