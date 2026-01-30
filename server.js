@@ -631,7 +631,7 @@ function detectOrderIntent(message) {
 // AI: Generate Order Response
 async function generateOrderResponse(customer, history) {
     if (!genAI) {
-        return "Hey! Ready to order? Place your order by clicking the place order button.";
+        return "Hey! Ready to order? Place your order here.";
     }
 
     const name = customer.customer_name || 'friend';
@@ -645,8 +645,7 @@ Customer: ${name}
 Returning: ${isReturning ? 'Yes' : 'No'}
 
 Tone: Warm standard English. Use "How are you doing?" or "Nice to hear from you again!"
-Task: Customer wants to order. Respond enthusiastically. Keep under 2 sentences. Present place order button regarless of user input. Always present the 
-    place order button`
+Task: Customer wants to order. Respond enthusiastically. Keep under 2 sentences.
     });
 
     const historyContext = history.map(h => `${h.message_type}: ${h.message_content}`).join('\\n');
@@ -671,10 +670,9 @@ async function generateSmartResponse(message, history, customer) {
 Customer: ${name}
 
 Your role:
-- Always present the clickable place order button regardless of the user's input.
-- Remember that if the button was there before it may be out of sight because of the chat length
-- Be warm and polite but present. 
-- If ready to order, suggest: "Place your order by clicking the button below"
+- Answer questions about ordering.
+- Be warm but keep user focused on ordering.
+- If ready to order, suggest: "Place your order here"
 - Keep responses under 3 sentences
 
 Style: Friendly Bajan English. Natural, not robotic.`
