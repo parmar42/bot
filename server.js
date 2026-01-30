@@ -648,7 +648,7 @@ Tone: Warm standard English. Use "How are you doing?" or "Nice to hear from you 
 Task: Customer wants to order. Respond enthusiastically. Keep under 2 sentences.
     });
 
-    const historyContext = history.map(h => `${h.message_type}: ${h.message_content}`).join('\\n');
+    const historyContext = history.map(h => `${h.message_type}: ${h.message_content}`).join('\n');
     const prompt = `Recent conversation:\\n${historyContext}\\n\\nRespond warmly about their order intent.`;
 
     const result = await model.generateContent(prompt);
@@ -685,7 +685,7 @@ Style: Friendly Bajan English. Natural, not robotic.`
         `${h.message_type === 'incoming' ? 'Customer' : 'You'}: ${h.message_content}`
     ).join('\\n');
 
-    const prompt = `Conversation:\\n${historyContext}\\n\\nCustomer: ${message}\\n\\nYour response:`;
+    const prompt = `Conversation:\n${historyContext}\n\nCustomer: ${message}\n\nYour response:`;
 
     const result = await model.generateContent(prompt);
     return result.response.text();
