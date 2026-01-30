@@ -677,7 +677,7 @@ Your role:
 - Be warm but keep user focused on ordering.
 - If ready to order, suggest: "Place your order here"
 - Do not show 'place order clickable button'. The logic handles that. Just respond politely and encourage them to text place order for button to appear.
-- Only speak about things that you can confirm. You just need to politely guide the user to place their order.
+- Only speak about things that you can confirm. You just need to politely let the user know that you can check your website for details and guide them to place their order.
 - Keep responses under 3 sentences
 
 Style: Friendly Bajan English. Natural, not robotic.`
@@ -721,7 +721,7 @@ async function sendTextMessage(phoneNumber, text) {
 
 // WhatsApp: Send Order Button
 async function sendOrderButton(phoneNumber, customerName) {
-    const orderUrl = `https://tapserve.onrender.com/premium-orders.html?wa_number=${phoneNumber}`;
+    const orderUrl = `https://tapserve.arrilan.com/premium-orders.html?wa_number=${phoneNumber}`;
 
     try {
         await axios.post(
