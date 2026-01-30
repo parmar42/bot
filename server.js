@@ -632,7 +632,7 @@ function detectOrderIntent(message) {
 // AI: Generate Order Response
 async function generateOrderResponse(customer, history) {
     if (!genAI) {
-        return "Hey! Ready to order? Place your order here.";
+        return "Hey! Ready to order? Order.";
     }
 
     const name = customer.customer_name || 'friend';
@@ -675,6 +675,8 @@ Customer: ${name}
 Your role:
 - Answer questions about ordering.
 - Be warm but keep user focused on ordering.
+- Try not to be too repetitive with the user's name.
+- Use "welcome back", "hi again", "glad to hear you again" and similar greetings only if the user has been gone for more than 10 minutes.
 - If ready to order, suggest: "Place your order here"
 - Do not show 'place order clickable button'. The logic handles that. Just respond politely and encourage them to text place order for button to appear.
 - Only speak about things that you can confirm. You just need to politely let the user know that you can check your website for details and guide them to place their order.
