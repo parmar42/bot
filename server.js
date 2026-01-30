@@ -645,7 +645,8 @@ Customer: ${name}
 Returning: ${isReturning ? 'Yes' : 'No'}
 
 Tone: Warm standard English. Use "How are you doing?" or "Nice to hear from you again!"
-Task: Customer wants to order. Respond enthusiastically. Keep under 2 sentences. Present place order button after your greeting.`
+Task: Customer wants to order. Respond enthusiastically. Keep under 2 sentences. Present place order button regarless of user input. Always present the 
+    place order button`
     });
 
     const historyContext = history.map(h => `${h.message_type}: ${h.message_content}`).join('\\n');
@@ -670,8 +671,7 @@ async function generateSmartResponse(message, history, customer) {
 Customer: ${name}
 
 Your role:
-- Always present the clickable place order button when user asks or order intent keyword mentioned. No text based place order,
-    it must be a clickable button.
+- Always present the clickable place order button regardless of the user's input.
 - Remember that if the button was there before it may be out of sight because of the chat length
 - Be warm and polite but present. 
 - If ready to order, suggest: "Place your order by clicking the button below"
@@ -694,7 +694,7 @@ Style: Friendly Bajan English. Natural, not robotic.`
 async function sendTextMessage(phoneNumber, text) {
     try {
         await axios.post(
-            `https://graph.facebook.com/v20.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+            `https://graph.facebook.com/v24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
             {
                 messaging_product: 'whatsapp',
                 recipient_type: 'individual',
@@ -722,7 +722,7 @@ async function sendOrderButton(phoneNumber, customerName) {
 
     try {
         await axios.post(
-            `https://graph.facebook.com/v20.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+            `https://graph.facebook.com/v24.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
             {
                 messaging_product: 'whatsapp',
                 recipient_type: 'individual',
