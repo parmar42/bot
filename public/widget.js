@@ -7,220 +7,264 @@
     const BASE_URL = 'https://bot-8yai.onrender.com';
     // Example: 'https://chatbot-api-abc123.onrender.com'
     
-    // 2. INJECT CSS STYLES
-    const style = document.createElement('style');
-    style.innerHTML = `
-        #bot-container { 
-            position: fixed; 
-            bottom: 20px; 
-            right: 20px; 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-            z-index: 9999; 
-        }
-        #bot-bubble { 
-            width: 60px; 
-            height: 60px; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 50%; 
-            cursor: pointer; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
-            transition: all 0.3s ease;
-            font-size: 28px;
-        }
-        #bot-bubble:hover { 
-            transform: scale(1.1); 
-            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
-        }
-        #bot-window { 
-            width: 350px; 
-            height: 500px; 
-            background: white; 
-            border-radius: 16px; 
-            display: none; 
-            flex-direction: column; 
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2); 
-            overflow: hidden; 
-            margin-bottom: 10px;
-            animation: slideUp 0.3s ease;
-            transition: all 0.3s ease-in-out; 
-        }
+   // 2. INJECT CSS STYLES
+const style = document.createElement('style');
+style.innerHTML = `
+    #bot-container { 
+        position: fixed; 
+        bottom: 20px; 
+        right: 20px; 
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+        z-index: 9999; 
+    }
+    #bot-bubble { 
+        width: 60px; 
+        height: 60px; 
+        background: linear-gradient(135deg, #06B6D4 0%, #0891B2 100%);
+        border-radius: 50%; 
+        cursor: pointer; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        box-shadow: 0 4px 15px rgba(6, 182, 212, 0.4); 
+        transition: all 0.3s ease;
+        font-size: 28px;
+    }
+    #bot-bubble:hover { 
+        transform: scale(1.1); 
+        box-shadow: 0 6px 20px rgba(6, 182, 212, 0.6);
+    }
+    #bot-window { 
+        width: 380px; 
+        height: 600px; 
+        background: white; 
+        border-radius: 16px; 
+        display: none; 
+        flex-direction: column; 
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2); 
+        overflow: hidden; 
+        margin-bottom: 10px;
+        animation: slideUp 0.3s ease;
+        transition: all 0.3s ease-in-out; 
+    }
 
-        @keyframes slideUp {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+    @keyframes slideUp {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+    #bot-header { 
+        background: linear-gradient(135deg, #06B6D4 0%, #0891B2 100%);
+        color: white; 
+        padding: 18px; 
+        font-weight: 600; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center;
+        font-size: 16px;
+    }
+    #close-bot {
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        line-height: 1;
+        opacity: 0.9;
+        transition: opacity 0.2s;
+        background: rgba(255,255,255,0.2);
+        padding: 6px 12px;
+        border-radius: 6px;
+    }
+    #close-bot:hover {
+        opacity: 1;
+        background: rgba(255,255,255,0.3);
+    }
+    #bot-messages { 
+        flex: 1; 
+        padding: 15px; 
+        overflow-y: auto; 
+        display: flex; 
+        flex-direction: column; 
+        gap: 12px; 
+        background: #F8FAFC;
+    }
+    #bot-messages::-webkit-scrollbar {
+        width: 6px;
+    }
+    #bot-messages::-webkit-scrollbar-thumb {
+        background: #CBD5E1;
+        border-radius: 3px;
+    }
+    #bot-input-area { 
+        border-top: 1px solid #E2E8F0; 
+        padding: 12px; 
+        display: flex; 
+        gap: 8px;
+        background: white;
+    }
+    #bot-input { 
+        flex: 1; 
+        border: 2px solid #E2E8F0; 
+        padding: 10px 14px; 
+        border-radius: 8px; 
+        outline: none;
+        font-size: 14px;
+        transition: border-color 0.2s;
+    }
+    #bot-input:focus {
+        border-color: #06B6D4;
+    }
+    #bot-send-btn {
+        background: linear-gradient(135deg, #06B6D4 0%, #0891B2 100%);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s;
+        font-size: 14px;
+    }
+    #bot-send-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+    }
+    #bot-send-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .msg { 
+        padding: 12px 16px; 
+        border-radius: 12px; 
+        max-width: 80%; 
+        font-size: 14px; 
+        line-height: 1.5;
+        word-wrap: break-word;
+        animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .user-msg { 
+        align-self: flex-end; 
+        background: linear-gradient(135deg, #06B6D4 0%, #0891B2 100%);
+        color: white; 
+        border-bottom-right-radius: 4px;
+        box-shadow: 0 2px 8px rgba(6, 182, 212, 0.2);
+    }
+    .bot-msg { 
+        align-self: flex-start; 
+        background: white;
+        color: #0F172A; 
+        border-bottom-left-radius: 4px;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+        border: 1px solid #E2E8F0;
+    }
+    .typing-indicator {
+        display: flex;
+        gap: 4px;
+        padding: 12px 16px;
+        background: white;
+        border-radius: 12px;
+        align-self: flex-start;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+        border: 1px solid #E2E8F0;
+    }
+    .typing-indicator span {
+        width: 8px;
+        height: 8px;
+        background: #06B6D4;
+        border-radius: 50%;
+        animation: bounce 1.4s infinite ease-in-out;
+    }
+    .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+    .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes bounce {
+        0%, 80%, 100% { transform: scale(0); }
+        40% { transform: scale(1); }
+    }
+    .error-msg {
+        align-self: flex-start;
+        background: #FEE2E2;
+        color: #991B1B;
+        border: 1px solid #FCA5A5;
+    }
+
+    /* MOBILE RESPONSIVE - FULL VIEWPORT */
+    @media (max-width: 768px) {
+        #bot-container {
+            bottom: 0 !important;
+            right: 0 !important;
         }
-        #bot-header { 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white; 
-            padding: 18px; 
-            font-weight: 600; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center;
-            font-size: 16px;
+        #bot-bubble {
+            bottom: 16px;
+            right: 16px;
+            width: 56px;
+            height: 56px;
+            font-size: 24px;
+        }
+        #bot-window.fullscreen-active {
+            display: flex !important;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh; /* Dynamic viewport height for mobile keyboards */
+            border-radius: 0;
+            margin-bottom: 0;
+            z-index: 10000;
+            animation: none;
+        }
+        #bot-bubble.hidden {
+            display: none;
+        }
+        #bot-header {
+            padding: 16px;
+            font-size: 18px;
         }
         #close-bot {
-            cursor: pointer;
-            font-size: 24px;
-            line-height: 1;
-            opacity: 0.9;
-            transition: opacity 0.2s;
+            font-size: 16px;
+            padding: 8px 16px;
         }
-        #close-bot:hover {
-            opacity: 1;
+        #bot-messages {
+            padding: 12px;
         }
-        #bot-messages { 
-            flex: 1; 
-            padding: 15px; 
-            overflow-y: auto; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 12px; 
-            background: #f5f5f7;
+        #bot-input-area {
+            padding: 12px;
+            padding-bottom: max(12px, env(safe-area-inset-bottom)); /* Account for iPhone notch */
         }
-        #bot-messages::-webkit-scrollbar {
-            width: 6px;
+        .msg {
+            max-width: 85%;
         }
-        #bot-messages::-webkit-scrollbar-thumb {
-            background: #ccc;
-            border-radius: 3px;
-        }
-        #bot-input-area { 
-            border-top: 1px solid #e5e5e7; 
-            padding: 12px; 
-            display: flex; 
-            gap: 8px;
-            background: white;
-        }
-        #bot-input { 
-            flex: 1; 
-            border: 1px solid #ddd; 
-            padding: 10px 12px; 
-            border-radius: 20px; 
-            outline: none;
-            font-size: 14px;
-            transition: border-color 0.2s;
-        }
-        #bot-input:focus {
-            border-color: #667eea;
-        }
-        #bot-send-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 10px 18px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: transform 0.2s;
-            font-size: 14px;
-        }
-        #bot-send-btn:hover {
-            transform: scale(1.05);
-        }
-        #bot-send-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        .msg { 
-            padding: 10px 14px; 
-            border-radius: 16px; 
-            max-width: 80%; 
-            font-size: 14px; 
-            line-height: 1.5;
-            word-wrap: break-word;
-            animation: fadeIn 0.3s ease;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .user-msg { 
-            align-self: flex-end; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white; 
-            border-bottom-right-radius: 4px;
-        }
-        .bot-msg { 
-            align-self: flex-start; 
-            background: white;
-            color: #333; 
-            border-bottom-left-radius: 4px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-        .typing-indicator {
-            display: flex;
-            gap: 4px;
-            padding: 10px 14px;
-            background: white;
-            border-radius: 16px;
-            align-self: flex-start;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-        .typing-indicator span {
-            width: 8px;
-            height: 8px;
-            background: #999;
-            border-radius: 50%;
-            animation: bounce 1.4s infinite ease-in-out;
-        }
-        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
-        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
-        @keyframes bounce {
-            0%, 80%, 100% { transform: scale(0); }
-            40% { transform: scale(1); }
-        }
-        .error-msg {
-            align-self: flex-start;
-            background: #fee;
-            color: #c33;
-            border: 1px solid #fcc;
-        }
+    }
 
-        @media (max-width: 600px) {
-            #bot-container {
-                bottom: 0 !important;
-                right: 0 !important;
-            }
-            #bot-window.fullscreen-active {
-                display: flex !important;
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100vw;
-                height: 100dvh; /* Dynamic viewport height for mobile keyboards */
-                border-radius: 0;
-                margin-bottom: 0;
-                z-index: 10000;
-            }
-            #bot-bubble.hidden {
-                display: none;
-            }
+    /* Tablet adjustments */
+    @media (min-width: 769px) and (max-width: 1024px) {
+        #bot-window {
+            width: 400px;
+            height: 650px;
         }
+    }
+`;
+document.head.appendChild(style);
 
-    `;
-    document.head.appendChild(style);
-
-    // 3. CREATE UI ELEMENTS
-    const container = document.createElement('div');
-    container.id = 'bot-container';
-    container.innerHTML = `
-        <div id="bot-window">
-            <div id="bot-header">
-                <span id="bot-name">AI Assistant</span>
-                 <span id="close-bot" style="padding: 5px 10px;">Done</span>
-            </div>
-            <div id="bot-messages"></div>
-            <div id="bot-input-area">
-                <input type="text" id="bot-input" placeholder="Type a message...">
-                <button id="bot-send-btn">Send</button>
-            </div>
+// 3. CREATE UI ELEMENTS
+const container = document.createElement('div');
+container.id = 'bot-container';
+container.innerHTML = `
+    <div id="bot-window">
+        <div id="bot-header">
+            <span id="bot-name">💬 Arrilan Assistant</span>
+            <span id="close-bot">Done</span>
         </div>
-        <div id="bot-bubble">💬</div>
-    `;
+        <div id="bot-messages"></div>
+        <div id="bot-input-area">
+            <input type="text" id="bot-input" placeholder="Ask me anything...">
+            <button id="bot-send-btn">Send</button>
+        </div>
+    </div>
+    <div id="bot-bubble">💬</div>
+`;
     document.body.appendChild(container);
 
     const botWindow = document.getElementById('bot-window');
