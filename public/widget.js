@@ -4,7 +4,7 @@
     const botId = scriptTag.getAttribute('data-bot-id');
     
     // 🔧 REPLACE THIS WITH YOUR RENDER URL
-    const BASE_URL = 'https://bot-pd1s.onrender.com';
+    const BASE_URL = 'https://bot-8yai.onrender.com';
     // Example: 'https://chatbot-api-abc123.onrender.com'
     
     // 2. INJECT CSS STYLES
