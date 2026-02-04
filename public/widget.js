@@ -28,24 +28,33 @@ style.innerHTML = `
         justify-content: center; 
         box-shadow: 0 4px 15px rgba(6, 182, 212, 0.4); 
         transition: all 0.3s ease;
-        font-size: 28px;
     }
     #bot-bubble:hover { 
         transform: scale(1.1); 
         box-shadow: 0 6px 20px rgba(6, 182, 212, 0.6);
     }
+    #bot-bubble svg {
+        width: 28px;
+        height: 28px;
+        stroke: white;
+        fill: none;
+    }
     #bot-window { 
-        width: 380px; 
-        height: 600px; 
+        width: 100vw;
+        height: 100vh;
+        height: 100dvh;
         background: white; 
-        border-radius: 16px; 
+        border-radius: 0;
         display: none; 
         flex-direction: column; 
-        box-shadow: 0 10px 40px rgba(0,0,0,0.2); 
+        box-shadow: none;
         overflow: hidden; 
-        margin-bottom: 10px;
+        margin-bottom: 0;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 10000;
         animation: slideUp 0.3s ease;
-        transition: all 0.3s ease-in-out; 
     }
 
     @keyframes slideUp {
@@ -96,6 +105,7 @@ style.innerHTML = `
     #bot-input-area { 
         border-top: 1px solid #E2E8F0; 
         padding: 12px; 
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
         display: flex; 
         gap: 8px;
         background: white;
@@ -189,72 +199,20 @@ style.innerHTML = `
         border: 1px solid #FCA5A5;
     }
 
-    /* MOBILE RESPONSIVE - FULL VIEWPORT */
-    @media (max-width: 768px) {
-        #bot-container {
-            bottom: 0 !important;
-            right: 0 !important;
-        }
-        #bot-bubble {
-            bottom: 16px;
-            right: 16px;
-            width: 56px;
-            height: 56px;
-            font-size: 24px;
-        }
-        #bot-window.fullscreen-active {
-            display: flex !important;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            height: 100dvh; /* Dynamic viewport height for mobile keyboards */
-            border-radius: 0;
-            margin-bottom: 0;
-            z-index: 10000;
-            animation: none;
-        }
-        #bot-bubble.hidden {
-            display: none;
-        }
-        #bot-header {
-            padding: 16px;
-            font-size: 18px;
-        }
-        #close-bot {
-            font-size: 16px;
-            padding: 8px 16px;
-        }
-        #bot-messages {
-            padding: 12px;
-        }
-        #bot-input-area {
-            padding: 12px;
-            padding-bottom: max(12px, env(safe-area-inset-bottom)); /* Account for iPhone notch */
-        }
-        .msg {
-            max-width: 85%;
-        }
-    }
-
-    /* Tablet adjustments */
-    @media (min-width: 769px) and (max-width: 1024px) {
-        #bot-window {
-            width: 400px;
-            height: 650px;
-        }
+    #bot-bubble.hidden {
+        display: none;
     }
 `;
 document.head.appendChild(style);
 
+// 3. CREATE UI ELEMENTS
 // 3. CREATE UI ELEMENTS
 const container = document.createElement('div');
 container.id = 'bot-container';
 container.innerHTML = `
     <div id="bot-window">
         <div id="bot-header">
-            <span id="bot-name">💬 Arrilan Assistant</span>
+            <span id="bot-name">Arrilan Assistant</span>
             <span id="close-bot">Done</span>
         </div>
         <div id="bot-messages"></div>
@@ -263,9 +221,15 @@ container.innerHTML = `
             <button id="bot-send-btn">Send</button>
         </div>
     </div>
-    <div id="bot-bubble">💬</div>
+    <div id="bot-bubble">
+        <i data-lucide="message-circle"></i>
+    </div>
 `;
-    document.body.appendChild(container);
+
+document.body.appendChild(container);
+
+// Initialize Lucide icons for the bubble
+lucide.createIcons();
 
     const botWindow = document.getElementById('bot-window');
     const botBubble = document.getElementById('bot-bubble');
